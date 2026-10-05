@@ -1,3 +1,8 @@
 .env
 __pycache__/
 *.pyc
+
+# Backups / archives
+*.bak
+*.bak_*
+*.zip
