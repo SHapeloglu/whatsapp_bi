@@ -4,6 +4,8 @@ Son güncelleme: 2026-08-14
 
 ## ✅ Tamamlananlar
 
+- [x] Yönetim uçlarına `X-API-Key` (`ADMIN_API_KEY`), `/docs`/`/openapi.json` kapatıldı, servis `127.0.0.1:9000`'e alındı, HMAC anahtar yoksa reddediyor (2026-10-07)
+- [x] Meta webhook GET doğrulaması `hub.mode`/`hub.verify_token`/`hub.challenge` adlarıyla düzeltildi (2026-10-07)
 - [x] HMAC imza doğrulaması (2026-08-11)
 - [x] Duplicate mesaj koruması (2026-08-13)
 - [x] Medya mesajı reddi (2026-08-14)
@@ -15,8 +17,7 @@ Son güncelleme: 2026-08-14
 
 ### 🔴 BLOCKING
 
-- [ ] **🔴 Yönetim uçları kimliksiz ve internete açık** (2026-10-07) — `/kullanici-ekle`, `/kullanici-sil`, `/kullanicilar`, `/sirket-ayar-kaydet`, `/sirket-token-yenile`, `/mesaj-listesi`, `/maliyet-raporu`, `/odoo-sirketler` auth içermiyor; servis `0.0.0.0:9000` + `whatsappbi.odoodanismanlik.com` üzerinden açık, `/docs` dışarıdan görülüyor. Herkes numara ekleyip finans verisi sorgulayabilir / token değiştirebilir. Yap: `--host 127.0.0.1`, yönetim uçlarına API anahtarı (`Depends`), `FastAPI(docs_url=None, redoc_url=None)`. (`/root/ISLISTESI.md` #53)
-- [ ] Webhook POST testi — Meta Console kontrol (2026-08-14)
+- [ ] Webhook POST testi — Meta Console kontrol (2026-08-14). **2026-10-07:** GET doğrulama hiç çalışmıyordu (kod `hub_mode` bekliyordu, Meta `hub.mode` gönderir) → düzeltildi, sunucudan doğru token ile 200 + challenge dönüyor. Meta Console'da URL'i yeniden "Verify and save" yap.
   1. Webhook URL doğru mu kaydedilmiş?
   2. Verify Token eşleşiyor mu (openpyerp_verify_2026)?
   3. Messages field subscribe'dı mı?
@@ -37,4 +38,6 @@ Son güncelleme: 2026-08-14
 | 1 | HMAC | ✅ Kapatıldı |
 | 2 | Duplicate | ✅ Kapatıldı |
 | 3 | Medya Reddi | ✅ Kapatıldı |
-| 4 | Webhook POST | 🔴 BLOCKING |
+| 4 | Webhook GET doğrulama parametre adları (`hub.mode`) | ✅ Kapatıldı (2026-10-07) — Meta tarafında yeniden doğrulama bekliyor |
+| 5 | Yönetim uçları kimliksiz, servis 0.0.0.0, `/docs` açık | ✅ Kapatıldı (2026-10-07) |
+| 6 | `WA_APP_SECRET` boşsa HMAC geçiyordu | ✅ Kapatıldı (2026-10-07) |

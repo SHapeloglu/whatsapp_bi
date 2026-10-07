@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, date, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks
+from fastapi import FastAPI, Request, HTTPException, Depends, BackgroundTasks, Header, Query
 from fastapi.responses import PlainTextResponse
 import httpx
 from sqlalchemy import (
@@ -22,6 +22,7 @@ from odoo_client import OdooClient
 
 VERIFY_TOKEN = os.getenv("WA_VERIFY_TOKEN", "openpyerp_verify_2026")
 APP_SECRET   = os.getenv("WA_APP_SECRET", "")
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "")
 DATABASE_URI = os.getenv("DATABASE_URL",
     "postgresql+psycopg2://openpyerp_user:sifre@localhost/openpyerp")
 
@@ -258,7 +259,19 @@ async def veri_getir_ve_formatla(intent, odoo_sirket_id, params=None):
         log.error(f"Odoo sorgu hatası [{intent}]: {e}", exc_info=True)
         return "Veri alınırken hata oluştu, lütfen tekrar deneyin."
 
-app = FastAPI(title="WhatsApp BI — Odoo 18", version="2.0.0")
+app = FastAPI(title="WhatsApp BI — Odoo 18", version="2.0.0",
+              docs_url=None, redoc_url=None, openapi_url=None)
+
+
+def yonetici_dogrula(x_api_key: str = Header(None)):
+    """Yönetim uçları için X-API-Key kontrolü. ADMIN_API_KEY tanımlı değilse uçlar kapalıdır."""
+    if not ADMIN_API_KEY:
+        raise HTTPException(status_code=503, detail="Yönetim API anahtarı tanımlı değil")
+    if not x_api_key or not hmac.compare_digest(x_api_key, ADMIN_API_KEY):
+        raise HTTPException(status_code=401, detail="Geçersiz API anahtarı")
+
+
+yonetici = [Depends(yonetici_dogrula)]
 
 @app.on_event("startup")
 async def startup():
@@ -272,15 +285,19 @@ async def startup():
 
 def imza_dogrula(raw_body: bytes, header: str, secret: str) -> bool:
     if not secret:
-        return True  # Secret tanımlı değilse geç (geliştirme modu)
+        log.error("WA_APP_SECRET tanımlı değil — webhook istekleri reddediliyor")
+        return False
     beklenen = "sha256=" + hmac.new(
         secret.encode(), raw_body, hashlib.sha256
     ).hexdigest()
     return hmac.compare_digest(beklenen, header)
 
 @app.get("/webhook")
-async def webhook_dogrula(hub_mode=None, hub_challenge=None, hub_verify_token=None):
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+async def webhook_dogrula(hub_mode: str = Query(None, alias="hub.mode"),
+                          hub_challenge: str = Query(None, alias="hub.challenge"),
+                          hub_verify_token: str = Query(None, alias="hub.verify_token")):
+    # Meta parametreleri "hub.mode" gibi noktalı adlarla gönderir
+    if hub_mode == "subscribe" and hub_verify_token and hmac.compare_digest(hub_verify_token, VERIFY_TOKEN):
         return PlainTextResponse(hub_challenge)
     raise HTTPException(status_code=403, detail="Doğrulama başarısız")
 
@@ -383,7 +400,7 @@ async def saglik():
     ping = await odoo.ping()
     return {"whatsapp_bi": "ok", "odoo": ping}
 
-@app.post("/kullanici-ekle")
+@app.post("/kullanici-ekle", dependencies=yonetici)
 async def kullanici_ekle(wa_no: str, sirket_id: int, db: Session = Depends(get_db)):
     if db.query(WaKullanici).filter_by(wa_no=wa_no).first():
         raise HTTPException(status_code=409, detail="Numara zaten kayıtlı")
@@ -393,7 +410,7 @@ async def kullanici_ekle(wa_no: str, sirket_id: int, db: Session = Depends(get_d
     db.refresh(yeni)
     return {"ok": True, "id": yeni.id, "wa_no": wa_no, "sirket_id": sirket_id}
 
-@app.post("/sirket-ayar-kaydet")
+@app.post("/sirket-ayar-kaydet", dependencies=yonetici)
 async def sirket_ayar_kaydet(sirket_id: int, odoo_sirket_id: int,
                               wa_phone_id: str, wa_business_id: str = None,
                               wa_token: str = None, db: Session = Depends(get_db)):
@@ -415,7 +432,7 @@ async def sirket_ayar_kaydet(sirket_id: int, odoo_sirket_id: int,
     db.commit()
     return {"ok": True}
 
-@app.post("/sirket-token-yenile")
+@app.post("/sirket-token-yenile", dependencies=yonetici)
 async def sirket_token_yenile(sirket_id: int, wa_token: str,
                                db: Session = Depends(get_db)):
     ayar = db.query(WaSirketAyar).filter_by(sirket_id=sirket_id).first()
@@ -426,15 +443,15 @@ async def sirket_token_yenile(sirket_id: int, wa_token: str,
     db.commit()
     return {"ok": True}
 
-@app.get("/odoo-sirketler")
+@app.get("/odoo-sirketler", dependencies=yonetici)
 async def odoo_sirketler():
     return await odoo.sirket_listesi()
 
-@app.get("/kullanicilar")
+@app.get("/kullanicilar", dependencies=yonetici)
 async def kullanici_listesi(db: Session = Depends(get_db)):
     return db.query(WaKullanici).filter_by(aktif=True).all()
 
-@app.post("/kullanici-sil")
+@app.post("/kullanici-sil", dependencies=yonetici)
 async def kullanici_sil(wa_no: str, db: Session = Depends(get_db)):
     k = db.query(WaKullanici).filter_by(wa_no=wa_no).first()
     if not k:
@@ -443,7 +460,7 @@ async def kullanici_sil(wa_no: str, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-@app.get("/mesaj-listesi")
+@app.get("/mesaj-listesi", dependencies=yonetici)
 async def mesaj_listesi(sirket_id: Optional[int] = None, limit: int = 50,
                         db: Session = Depends(get_db)):
     q = db.query(WaMesajLog)
@@ -455,7 +472,7 @@ async def mesaj_listesi(sirket_id: Optional[int] = None, limit: int = 50,
              "tarih": m.tarih.isoformat() if m.tarih else None}
             for m in mesajlar]
 
-@app.get("/maliyet-raporu")
+@app.get("/maliyet-raporu", dependencies=yonetici)
 async def maliyet_raporu(ay: Optional[int] = None, yil: Optional[int] = None,
                          db: Session = Depends(get_db)):
     yil = yil or datetime.now().year

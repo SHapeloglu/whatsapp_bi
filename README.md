@@ -4,7 +4,8 @@ Odoo 18 finansal verilerini WhatsApp'tan Türkçe doğal dil sorguları ile sorg
 
 ## Özellikler
 
-- HMAC-SHA256 webhook doğrulaması
+- HMAC-SHA256 webhook doğrulaması (`WA_APP_SECRET` yoksa istekler reddedilir)
+- Yönetim uçları `X-API-Key` başlığıyla korunur (`ADMIN_API_KEY`); Swagger `/docs` kapalı
 - Duplicate mesaj koruması (PostgreSQL)
 - Medya mesajı reddi (foto/ses gelince Türkçe cevap)
 - Multi-tenant (şirket bazlı Meta hesapları)
@@ -29,6 +30,16 @@ pip install -r requirements.txt
 cp .env.example .env
 nano .env
 systemctl start whatsapp-bi
+
+## Yönetim uçları
+
+`/kullanici-ekle`, `/kullanici-sil`, `/kullanicilar`, `/sirket-ayar-kaydet`, `/sirket-token-yenile`, `/odoo-sirketler`, `/mesaj-listesi`, `/maliyet-raporu` — hepsi `X-API-Key: <ADMIN_API_KEY>` başlığı ister (yoksa 401; `.env`'de anahtar tanımlı değilse 503). Açık uçlar: `/webhook` (GET doğrulama, POST HMAC) ve `/saglik`.
+
+```bash
+curl -H "X-API-Key: $ADMIN_API_KEY" http://127.0.0.1:9000/kullanicilar
+```
+
+Servis yalnız `127.0.0.1:9000`'de dinler; dış erişim nginx üzerinden.
 
 ## Webhook (Meta Console)
 

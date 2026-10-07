@@ -26,4 +26,4 @@ Port 11434: Ollama (Docker, planlandı)
 Loglar: journalctl -u whatsapp-bi -f
 Restart: systemctl restart whatsapp-bi
 Nginx: tail -30 /var/log/nginx/access.log
-Odoo test: curl http://localhost:9000/odoo-sirketler
+Odoo test: curl -H "X-API-Key: $ADMIN_API_KEY" http://127.0.0.1:9000/odoo-sirketler   # anahtar .env'de
