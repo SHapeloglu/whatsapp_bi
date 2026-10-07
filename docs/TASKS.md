@@ -15,6 +15,7 @@ Son güncelleme: 2026-08-14
 
 ### 🔴 BLOCKING
 
+- [ ] **🔴 Yönetim uçları kimliksiz ve internete açık** (2026-10-07) — `/kullanici-ekle`, `/kullanici-sil`, `/kullanicilar`, `/sirket-ayar-kaydet`, `/sirket-token-yenile`, `/mesaj-listesi`, `/maliyet-raporu`, `/odoo-sirketler` auth içermiyor; servis `0.0.0.0:9000` + `whatsappbi.odoodanismanlik.com` üzerinden açık, `/docs` dışarıdan görülüyor. Herkes numara ekleyip finans verisi sorgulayabilir / token değiştirebilir. Yap: `--host 127.0.0.1`, yönetim uçlarına API anahtarı (`Depends`), `FastAPI(docs_url=None, redoc_url=None)`. (`/root/ISLISTESI.md` #53)
 - [ ] Webhook POST testi — Meta Console kontrol (2026-08-14)
   1. Webhook URL doğru mu kaydedilmiş?
   2. Verify Token eşleşiyor mu (openpyerp_verify_2026)?
