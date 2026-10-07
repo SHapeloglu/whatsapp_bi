@@ -26,6 +26,7 @@ Son güncelleme: 2026-08-14
 
 ### 🔵 Sıradaki (30. Gün)
 
+- [ ] İlk gerçek mesajda doğrula: `webhook_mesaj` istek kapsamlı `db` oturumunu `mesaj_isle_async` arka plan görevine geçiriyor; FastAPI ≥0.106'da `get_db`'nin `finally: db.close()`'u arka plan görevinden **önce** çalışır. Hata görülürse görev içinde yeni `SessionLocal()` aç. (2026-10-07)
 - [ ] Ollama kurulumu — Docker + Qwen2.5-1.5B
 - [ ] Alarm sistemi — APScheduler (vade, kritik stok)
 - [ ] Delivered/read durum loglama
